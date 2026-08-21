@@ -2,16 +2,12 @@ import os
 import logging
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-from io import BytesIO
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 
 # ==================== НАСТРОЙКИ ====================
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
-SPREADSHEET_ID = '1R1nU8B04MnX-RLtDwSMh97bM_zivjqW_zsYKEn8Pr-4'
-
-if not TELEGRAM_TOKEN:
-    raise ValueError("❌ TELEGRAM_TOKEN не задан! Добавь переменную в Render")
+SPREADSHEET_ID = '1bCJNcdA6jooYQ6ZtQn6W34RteDsfN8pM1gWAdBM7idk'  # ТВОЙ ID!
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,274 +23,116 @@ def get_sheet_client():
         creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
         client = gspread.authorize(creds)
         return client
-    except FileNotFoundError:
-        logger.error("❌ Файл credentials.json не найден!")
-        return None
     except Exception as e:
-        logger.error(f"❌ Ошибка подключения к Google Sheets: {e}")
+        logger.error(f"Ошибка подключения: {e}")
         return None
 
-def get_sheet_data(sheet_name, range_cells=None):
-    """Получает данные из указанного листа."""
+def get_sheet_data(sheet_name):
     try:
         client = get_sheet_client()
         if not client:
-            return None, "Ошибка подключения к Google Sheets"
-        
+            return None
         sheet = client.open_by_key(SPREADSHEET_ID)
         worksheet = sheet.worksheet(sheet_name)
-        
-        if range_cells:
-            data = worksheet.get(range_cells)
-        else:
-            data = worksheet.get_all_values()
-        
-        return data, None
-    except gspread.exceptions.WorksheetNotFound:
-        return None, f"Лист '{sheet_name}' не найден в таблице"
-    except gspread.exceptions.SpreadsheetNotFound:
-        return None, "Таблица не найдена. Проверь SPREADSHEET_ID"
+        data = worksheet.get_all_values()
+        return data
     except Exception as e:
-        logger.error(f"Ошибка: {e}")
-        return None, f"Ошибка: {str(e)}"
-
-def create_screenshot(data, sheet_name):
-    """Создает скриншот (PNG) из данных таблицы."""
-    if not data or len(data) == 0:
+        logger.error(f"Ошибка чтения {sheet_name}: {e}")
         return None
-    
-    # Ограничиваем количество строк
-    max_rows = 30
-    if len(data) > max_rows:
-        data = data[:max_rows]
-        truncated = True
-    else:
-        truncated = False
-    
-    # Настройки
-    font_size = 12
-    header_font_size = 14
-    cell_padding = 8
-    cell_height = 30
-    min_cell_width = 80
-    
-    # Определяем ширину столбцов
-    col_widths = []
-    for col_idx in range(len(data[0])):
-        max_width = min_cell_width
-        for row in data:
-            if col_idx < len(row):
-                text = str(row[col_idx])
-                text_width = len(text) * 7
-                max_width = max(max_width, text_width + cell_padding * 2)
-        col_widths.append(max_width)
-    
-    # Размеры изображения
-    padding = 15
-    header_height = 60
-    total_width = sum(col_widths) + padding * 2
-    total_height = len(data) * cell_height + header_height + padding * 2
-    
-    # Создаем изображение
-    img = Image.new('RGB', (total_width, total_height), color='#ffffff')
-    draw = ImageDraw.Draw(img)
-    
-    # Загружаем шрифт
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size)
-        font_bold = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", header_font_size)
-    except:
-        try:
-            font = ImageFont.truetype("arial.ttf", font_size)
-            font_bold = ImageFont.truetype("arialbd.ttf", header_font_size)
-        except:
-            font = ImageFont.load_default()
-            font_bold = font
-    
-    # Заголовок
-    header_text = f"📊 {sheet_name}"
-    if truncated:
-        header_text += f" (показаны первые {max_rows} строк)"
-    draw.text((padding, 5), header_text, fill='#2c3e50', font=font_bold)
-    
-    # Рисуем таблицу
-    y_offset = header_height
-    
-    for row_idx, row in enumerate(data):
-        x_offset = padding
-        
-        # Цвет строки
-        if row_idx == 0:
-            bg_color = '#2980b9'
-            text_color = '#ffffff'
-        elif row_idx % 2 == 0:
-            bg_color = '#ecf0f1'
-            text_color = '#2c3e50'
-        else:
-            bg_color = '#ffffff'
-            text_color = '#2c3e50'
-        
-        for col_idx in range(len(col_widths)):
-            cell = row[col_idx] if col_idx < len(row) else ""
-            cell_width = col_widths[col_idx]
-            
-            # Рисуем ячейку
-            draw.rectangle(
-                [(x_offset, y_offset), (x_offset + cell_width, y_offset + cell_height)],
-                fill=bg_color,
-                outline='#bdc3c7'
-            )
-            
-            # Текст
-            text = str(cell)
-            text_x = x_offset + cell_padding
-            text_y = y_offset + (cell_height - font_size) // 2
-            
-            if row_idx == 0:
-                draw.text((text_x, text_y), text, fill=text_color, font=font_bold)
-            else:
-                draw.text((text_x, text_y), text, fill=text_color, font=font)
-            
-            x_offset += cell_width
-        y_offset += cell_height
-    
-    # Сохраняем в память
-    img_bytes = BytesIO()
-    img.save(img_bytes, format='PNG')
-    img_bytes.seek(0)
-    
-    return img_bytes
+
+def format_data(data):
+    if not data:
+        return "Нет данных"
+    result = ""
+    for row in data[:20]:
+        result += " | ".join([str(cell) for cell in row]) + "\n"
+    return result
 
 # ==================== НАСТРОЙКА ЛИСТОВ ====================
-# ВНИМАНИЕ: поле 'sheet_name' должно ТОЧНО совпадать с названием листа в Google Таблице!
 SHEETS_CONFIG = {
     'graphics': {
         'name': '📊 График',
-        'sheet_name': 'Зоны',
+        'sheet_name': 'Зоны',  # ← Это имя листа в Google Таблице!
         'range': 'A1:AF10'
     },
     'metrics': {
         'name': '🚚 Тачка',
-        'sheet_name': 'Разгрузка+дежурство',
+        'sheet_name': 'Разгрузка+дежурство',  # ← Это имя листа в Google Таблице!
         'range': 'A1:AF11'
     },
     'birthdays': {
         'name': '🏆 Конкурс',
-        'sheet_name': 'КОНКУРС 2.0',
+        'sheet_name': 'КОНКУРС 2.0',  # ← Это имя листа в Google Таблице!
         'range': 'A1:Z8'
     },
     'tasks': {
         'name': '📋 Шпаргалка',
-        'sheet_name': 'Шпаргалка',
+        'sheet_name': 'Шпаргалка',  # ← Это имя листа в Google Таблице!
         'range': 'A1:E69'
     }
 }
 
 # ==================== ОБРАБОТЧИКИ БОТА ====================
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def start(update, context):
     keyboard = []
     for key, config in SHEETS_CONFIG.items():
         keyboard.append([InlineKeyboardButton(config['name'], callback_data=f'sheet_{key}')])
-    keyboard.append([InlineKeyboardButton("📋 Все данные", callback_data='sheet_all')])
+    keyboard.append([InlineKeyboardButton("📋 Все данные", callback_data='all')])
     
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
-        "📋 *Выбери лист для просмотра:*\n\n"
-        "Бот сделает скриншот данных из таблицы.\n"
-        "✅ Данные всегда свежие — можно редактировать таблицу!\n"
-        "🔄 Таблица НЕ опубликована — всё работает через API.",
-        reply_markup=reply_markup,
+    update.message.reply_text(
+        "📋 **Выбери лист:**",
+        reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode='Markdown'
     )
 
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def button_handler(update, context):
     query = update.callback_query
-    await query.answer()
+    query.answer()
     action = query.data
     
-    if action == 'sheet_all':
-        await query.edit_message_text("📸 Делаю скриншоты всех листов...")
-        
+    if action == 'all':
+        query.edit_message_text("📋 Загружаю все данные...")
         for key, config in SHEETS_CONFIG.items():
-            data, error = get_sheet_data(config['sheet_name'], config['range'])
-            
-            if error:
-                await query.message.reply_text(
-                    f"❌ *{config['name']}*\n{error}",
-                    parse_mode='Markdown'
-                )
-            elif data:
-                screenshot = create_screenshot(data, config['name'])
-                if screenshot:
-                    await query.message.reply_photo(
-                        screenshot,
-                        caption=f"✅ {config['name']}"
-                    )
-                else:
-                    await query.message.reply_text(f"⚠️ Не удалось создать скриншот для {config['name']}")
+            # Используем sheet_name из конфига!
+            data = get_sheet_data(config['sheet_name'])
+            if data:
+                text = f"📌 **{config['name']}**\n```\n{format_data(data)}\n```"
+                query.message.reply_text(text, parse_mode='Markdown')
             else:
-                await query.message.reply_text(f"📭 *{config['name']}*\nНет данных", parse_mode='Markdown')
-        
-        await show_main_menu(query.message)
+                query.message.reply_text(f"❌ Нет данных для {config['name']}")
         return
     
-    # Конкретный лист
     sheet_key = action.replace('sheet_', '')
     config = SHEETS_CONFIG.get(sheet_key)
     if not config:
-        await query.edit_message_text("❌ Лист не найден")
+        query.edit_message_text("❌ Лист не найден")
         return
     
-    await query.edit_message_text(f"📸 Делаю скриншот {config['name']}...")
+    query.edit_message_text(f"📸 Получаю данные из {config['name']}...")
     
-    data, error = get_sheet_data(config['sheet_name'], config['range'])
+    # Используем sheet_name из конфига!
+    data = get_sheet_data(config['sheet_name'])
     
-    if error:
-        await query.message.reply_text(
-            f"❌ *{config['name']}*\n{error}\n\n"
-            "Проверь название листа в таблице.",
-            parse_mode='Markdown'
-        )
-    elif data:
-        screenshot = create_screenshot(data, config['name'])
-        if screenshot:
-            await query.message.reply_photo(
-                screenshot,
-                caption=f"✅ *{config['name']}*\nДиапазон: `{config['range']}`",
-                parse_mode='Markdown'
-            )
-        else:
-            await query.message.reply_text(f"⚠️ Не удалось создать скриншот для {config['name']}")
+    if data:
+        text = f"📌 **{config['name']}**\n```\n{format_data(data)}\n```"
+        query.message.reply_text(text, parse_mode='Markdown')
     else:
-        await query.message.reply_text(f"📭 *{config['name']}*\nНет данных", parse_mode='Markdown')
-    
-    await show_main_menu(query.message)
+        query.message.reply_text(f"❌ Нет данных для {config['name']}")
 
-async def show_main_menu(message):
-    keyboard = []
-    for key, config in SHEETS_CONFIG.items():
-        keyboard.append([InlineKeyboardButton(config['name'], callback_data=f'sheet_{key}')])
-    keyboard.append([InlineKeyboardButton("📋 Все данные", callback_data='sheet_all')])
-    
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await message.reply_text(
-        "📋 *Что ещё посмотрим?*",
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
-    )
-
-# ==================== ЗАПУСК ====================
 def main():
     if not TELEGRAM_TOKEN:
         logger.error("❌ Токен не найден! Добавь TELEGRAM_TOKEN в Environment Variables")
         return
     
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(button_handler))
+    updater = Updater(TELEGRAM_TOKEN)
+    dp = updater.dispatcher
     
-    logger.info("🚀 Бот запущен и готов делать скриншоты!")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CallbackQueryHandler(button_handler))
+    
+    logger.info("🚀 Бот запущен!")
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == "__main__":
     main()
