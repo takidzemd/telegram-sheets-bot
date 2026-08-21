@@ -27,13 +27,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ============================================================
-#  ЗАШИТЫЙ КЛЮЧ (НЕ ТРОГАЙ ЭТОТ БЛОК!)
+#  ЗАШИТЫЙ КЛЮЧ (НЕ МЕНЯТЬ!)
 # ============================================================
 CREDS_DICT = {
   "type": "service_account",
   "project_id": "telegrambotsheets-506205",
   "private_key_id": "f33e5b992f3bfc3c50ccc634c97e2cad6b104fb2",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCX4z92eoGDvJeW\nUNGkI2MiulbXjM+GcqjZkRoGjVzKXuUWYLYdpS6FeHPRqXk42337DT9YmgBXRrK1\npRumL+DBJnlByEPuJTEs+xA3V3RNCFupZ8Fo6Sqwq7KP2Kp5+WDKucoVpixGXKLV\nTMhpdgzDHBA4u9MNdAXxp+LwUWvGD5CsjEFz3ElIzBGjbe5iY7ZfMzEUatDn6jGq\nPAwF5L54Bw9Uslv/pbR12vYYau3foPjXdlp6Mlx2KSvHXgrtPXzdiIhuaEigpLBL\nnbt2f8qTtpb6aZPG8rVBAXPT4SeCCRJhnHDp9uzuagalR3KiIJHN0hFk0hihsx06\nEpZPmICfAgMBAAECggEAA5LlFOEB5HFdrIB/KfzOZsTmgfgbj/BCB/pZBCaHSCJU\nx/tIVlLFn/Qdo/3ak+pA+/Krz42yPao+ddgUHx9X94XzzZp7DwLGycioNeg4sHFS\n3UU3mDoTWbnXRz4J+q/lgI+iU62xn//l7MnAhyOmSmDQx4MdZzeYUA4hQx/uF0re\n9EM8wye+zhwhDLJnB4yjn1nvCm7Rjimc2dsGF2wziCN/WQaD67Qf68xwe59LaknF\nETeqC/pmp+bg6gq1xCgZ8WtrRnHVaW+NBaLwSQBBR3CmhWkzd2GVcqxLoLjEUdNk\nH04chMh4tCyXo5R6kRsFRKnOgiEKT58lyR3jWIQlbQKBgQDIIRuQtYVVZkd8g+Q+\nxJ1yA01B7gAS0JWhqfvtZ5YYKoB+YVNPRLoqzRlVw02TIWtu50Ci/3gD4ZE1Y36o\n+i9zJxRJioYnybe5TntbnMAAo8mkkipCHxNSGkUJZCJLEmYpH1h3ruigwifXUsmA\nYzIpQVKWHNHa0wK6GD0FEQ1LiwKBgQDCSmUPE5LljhdvCgI4I49nHW3kXLUuwQHP\nA9PprNlEIC+qoMIHtyBKUyeTdmlwrM+Q/VmxBqKkJ+s/v+Z9PhiTeAyggOU16Rj8\nFB74q41jlS2+Vr8/K3tCFaw7BHrLexuA4UzSGc9a2Oo/YlvTPqLFiynvy6K3GtUc\nYq23qrqRvQKBgDSQ7aqe4zzBNrmv8v3BqxFNaLeOihpnC0aBXZjIApaqY0HO0pEZ\nnkSrxqHOQMwKlSt2NnYZ4C40y21YiuZbgKcgdqWyavZ8d3OG98PiclQ4sTg25D6l\n5u9D0ypaUN+jH45hm10kZhoDpW9bYW4FoCFR9R1UyJJPpoG26CAykGltAoGAHbSK\nJvfzKa3D33JETJkDP9y8BII4IWHZCPGo4L1Qqp3RK+FQQ1ZgVXzJPD6KeHOzeJOD\ntxEwpLCFw0Vv1A4+a62bIJ8UbF2rOD9LTPHNuEACsmtI6juXqM7vekaBD8NOvTG1\nMRpJHba0eeRr7axR7qoMS2FzC1PK6YAc10v/InECgYBygHZlMoEdpw4u9Wf5UAwh\n48gbb98xfJCLvM0/WAotToQOyn4tUREn+UwYIQYAdveGnmR0H9L03CPZeoyHKlKF\nbADZlluk/uecsaO1RPher11T0t8nIDIncLTpKubYKcRntRZnOMjwIrLQP8ApZeW9\nIAhBu/vynIk2XyykM/mmuQ==\n-----END PRIVATE KEY-----\n",
+  "private_key": r"-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCX4z92eoGDvJeW\nUNGkI2MiulbXjM+GcqjZkRoGjVzKXuUWYLYdpS6FeHPRqXk42337DT9YmgBXRrK1\npRumL+DBJnlByEPuJTEs+xA3V3RNCFupZ8Fo6Sqwq7KP2Kp5+WDKucoVpixGXKLV\nTMhpdgzDHBA4u9MNdAXxp+LwUWvGD5CsjEFz3ElIzBGjbe5iY7ZfMzEUatDn6jGq\nPAwF5L54Bw9Uslv/pbR12vYYau3foPjXdlp6Mlx2KSvHXgrtPXzdiIhuaEigpLBL\nnbt2f8qTtpb6aZPG8rVBAXPT4SeCCRJhnHDp9uzuagalR3KiIJHN0hFk0hihsx06\nEpZPmICfAgMBAAECggEAA5LlFOEB5HFdrIB/KfzOZsTmgfgbj/BCB/pZBCaHSCJU\nx/tIVlLFn/Qdo/3ak+pA+/Krz42yPao+ddgUHx9X94XzzZp7DwLGycioNeg4sHFS\n3UU3mDoTWbnXRz4J+q/lgI+iU62xn//l7MnAhyOmSmDQx4MdZzeYUA4hQx/uF0re\n9EM8wye+zhwhDLJnB4yjn1nvCm7Rjimc2dsGF2wziCN/WQaD67Qf68xwe59LaknF\nETeqC/pmp+bg6gq1xCgZ8WtrRnHVaW+NBaLwSQBBR3CmhWkzd2GVcqxLoLjEUdNk\nH04chMh4tCyXo5R6kRsFRKnOgiEKT58lyR3jWIQlbQKBgQDIIRuQtYVVZkd8g+Q+\nxJ1yA01B7gAS0JWhqfvtZ5YYKoB+YVNPRLoqzRlVw02TIWtu50Ci/3gD4ZE1Y36o\n+i9zJxRJioYnybe5TntbnMAAo8mkkipCHxNSGkUJZCJLEmYpH1h3ruigwifXUsmA\nYzIpQVKWHNHa0wK6GD0FEQ1LiwKBgQDCSmUPE5LljhdvCgI4I49nHW3kXLUuwQHP\nA9PprNlEIC+qoMIHtyBKUyeTdmlwrM+Q/VmxBqKkJ+s/v+Z9PhiTeAyggOU16Rj8\nFB74q41jlS2+Vr8/K3tCFaw7BHrLexuA4UzSGc9a2Oo/YlvTPqLFiynvy6K3GtUc\nYq23qrqRvQKBgDSQ7aqe4zzBNrmv8v3BqxFNaLeOihpnC0aBXZjIApaqY0HO0pEZ\nnkSrxqHOQMwKlSt2NnYZ4C40y21YiuZbgKcgdqWyavZ8d3OG98PiclQ4sTg25D6l\n5u9D0ypaUN+jH45hm10kZhoDpW9bYW4FoCFR9R1UyJJPpoG26CAykGltAoGAHbSK\nJvfzKa3D33JETJkDP9y8BII4IWHZCPGo4L1Qqp3RK+FQQ1ZgVXzJPD6KeHOzeJOD\ntxEwpLCFw0Vv1A4+a62bIJ8UbF2rOD9LTPHNuEACsmtI6juXqM7vekaBD8NOvTG1\nMRpJHba0eeRr7axR7qoMS2FzC1PK6YAc10v/InECgYBygHZlMoEdpw4u9Wf5UAwh\n48gbb98xfJCLvM0/WAotToQOyn4tUREn+UwYIQYAdveGnmR0H9L03CPZeoyHKlKF\nbADZlluk/uecsaO1RPher11T0t8nIDIncLTpKubYKcRntRZnOMjwIrLQP8ApZeW9\nIAhBu/vynIk2XyykM/mmuQ==\n-----END PRIVATE KEY-----\n",
   "client_email": "bot-access@telegrambotsheets-506205.iam.gserviceaccount.com",
   "client_id": "114408237095170372228",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -48,12 +48,14 @@ CREDS_DICT = {
 # ============================================================
 def get_sheet_client():
     try:
+        # ВАЖНО: Превращаем текстовые \n в реальные переносы строк для Google
+        CREDS_DICT['private_key'] = CREDS_DICT['private_key'].replace('\\n', '\n')
+
         scope = [
             "https://spreadsheets.google.com/feeds",
             "https://www.googleapis.com/auth/drive",
             "https://www.googleapis.com/auth/spreadsheets"
         ]
-        # Используем зашитый словарь CREDS_DICT
         creds = Credentials.from_service_account_info(CREDS_DICT, scopes=scope)
         return gspread.authorize(creds)
     except Exception as e:
