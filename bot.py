@@ -1,6 +1,7 @@
 import os
 import base64
 import json
+import time
 import logging
 import gspread
 from google.oauth2.service_account import Credentials
@@ -13,9 +14,6 @@ from PIL import Image, ImageDraw, ImageFont
 #  НАСТРОЙКИ
 # ============================================================
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
-PORT = int(os.environ.get('PORT', 10000))
-RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL')
-
 SPREADSHEET_ID = '1R1nU8B04MnX-RLtDwSMh97bM_zivjqW_zsYKEn8Pr-4'
 
 SHEETS_CONFIG = {
@@ -37,7 +35,9 @@ def get_sheet_client():
         if not creds_b64:
             logger.error("❌ Переменная GOOGLE_CREDS_B64 не найдена!")
             return None
+
         creds_dict = json.loads(base64.b64decode(creds_b64))
+
         scope = [
             "https://spreadsheets.google.com/feeds",
             "https://www.googleapis.com/auth/drive",
@@ -68,35 +68,48 @@ def get_sheet_data(sheet_name, range_cells):
 def create_screenshot(data, sheet_name, range_cells):
     if not data:
         return None
+
     cell_width = 180
     cell_height = 35
     header_height = 50
     padding = 20
+
     rows = len(data)
     cols = max([len(row) for row in data]) if data else 0
+
     if rows == 0 or cols == 0:
         return None
+
     img_width = cols * cell_width + padding * 2
     img_height = rows * cell_height + header_height + padding * 2
+
     img = Image.new('RGB', (img_width, img_height), color='white')
     draw = ImageDraw.Draw(img)
+
     try:
         font = ImageFont.load_default()
         font_bold = ImageFont.load_default()
     except:
         font = ImageFont.load_default()
         font_bold = font
+
     title = f"{sheet_name} (диапазон: {range_cells})"
     draw.text((padding, 10), title, fill='black', font=font_bold)
+
     y_offset = header_height
     for i, row in enumerate(data):
         x_offset = padding
         for j, cell in enumerate(row):
-            draw.rectangle([(x_offset, y_offset), (x_offset + cell_width - 1, y_offset + cell_height - 1)], outline='gray', fill='white')
+            draw.rectangle(
+                [(x_offset, y_offset), (x_offset + cell_width - 1, y_offset + cell_height - 1)],
+                outline='gray',
+                fill='white'
+            )
             text = str(cell)[:15]
             draw.text((x_offset + 5, y_offset + 8), text, fill='black', font=font)
             x_offset += cell_width
         y_offset += cell_height
+
     img_bytes = BytesIO()
     img.save(img_bytes, format='PNG')
     img_bytes.seek(0)
@@ -143,28 +156,21 @@ async def show_main_menu(message):
     await message.reply_text("📋 **Что ещё посмотрим?**", reply_markup=reply_markup, parse_mode='Markdown')
 
 # ============================================================
-#  ЗАПУСК (WEBHOOK)
+#  ЗАПУСК ЧЕРЕЗ CRON JOB (без порта, без вебхуков)
 # ============================================================
 def main():
     if not TELEGRAM_TOKEN:
         logger.error("❌ Токен не найден!")
         return
+
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
-    
+
     logger.info("🚀 Бот запущен!")
-    
-    if not RENDER_URL:
-        logger.error("❌ Переменная RENDER_EXTERNAL_URL не найдена!")
-        return
-    
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        url_path=TELEGRAM_TOKEN,
-        webhook_url=f"{RENDER_URL}/{TELEGRAM_TOKEN}"
-    )
+    # Этот метод запускает бота, но не требует веб-сервера.
+    # Он будет работать до тех пор, пока процесс жив (без конфликтов)
+    app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
