@@ -5,7 +5,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont
 
 # ==================== НАСТРОЙКИ ====================
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
