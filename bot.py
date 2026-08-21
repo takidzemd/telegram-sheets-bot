@@ -1,4 +1,6 @@
 import os
+import base64
+import json
 import time
 import logging
 import telegram
@@ -23,7 +25,7 @@ SHEETS_CONFIG = {
     },
     'metrics': {
         'display': '🚚 Тачка',
-        'sheet_name': 'Разгрузка+дежурство', # Исправлено на маленькую "д" как в таблице!
+        'sheet_name': 'Разгрузка+дежурство', 
         'range': 'A1:AF11'
     },
     'birthdays': {
@@ -42,17 +44,27 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ============================================================
-#  ПОДКЛЮЧЕНИЕ К GOOGLE SHEETS (ИСПРАВЛЕНО!)
+#  ПОДКЛЮЧЕНИЕ К GOOGLE SHEETS (Через переменную окружения)
 # ============================================================
 def get_sheet_client():
     try:
+        # Получаем ключ из переменной окружения GOOGLE_CREDS_B64
+        creds_b64 = os.environ.get('GOOGLE_CREDS_B64')
+        if not creds_b64:
+            logger.error("❌ Переменная GOOGLE_CREDS_B64 не найдена! Добавь её на Render.")
+            return None
+
+        # Декодируем Base64 обратно в JSON
+        creds_dict = json.loads(base64.b64decode(creds_b64))
+
         scope = [
             "https://spreadsheets.google.com/feeds",
             "https://www.googleapis.com/auth/drive",
             "https://www.googleapis.com/auth/spreadsheets"
         ]
-        # Используем новую библиотеку google-auth вместо старой oauth2client
-        creds = Credentials.from_service_account_file('credentials.json', scopes=scope)
+        
+        # Используем современную библиотеку google-auth
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         return gspread.authorize(creds)
     except Exception as e:
         logger.error(f"Ошибка подключения: {e}")
@@ -96,7 +108,7 @@ def create_screenshot(data, sheet_name, range_cells):
     draw = ImageDraw.Draw(img)
 
     try:
-        # ИСПРАВЛЕНО: Используем стандартный шрифт, так как arial.ttf нет в Linux
+        # Используем встроенный шрифт, так как arial.ttf нет в Linux
         font = ImageFont.load_default()
         font_bold = ImageFont.load_default()
     except:
@@ -202,7 +214,7 @@ def main():
     
     logger.info("🚀 Бот запущен!")
     
-    # ИСПРАВЛЕНО: Добавлен цикл для обработки ошибки Conflict
+    # Обработка ошибки Conflict и перезапуск
     while True:
         try:
             app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
