@@ -28,18 +28,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ============================================================
-#  ПОДКЛЮЧЕНИЕ К GOOGLE SHEETS (Читаем JSON напрямую из переменной)
+#  ПОДКЛЮЧЕНИЕ К GOOGLE SHEETS (Читаем файл напрямую!)
 # ============================================================
 def get_sheet_client():
     try:
-        # Читаем JSON-строку напрямую из переменной окружения
-        creds_json_str = os.environ.get('GOOGLE_CREDS_JSON')
-        if not creds_json_str:
-            logger.error("❌ Переменная GOOGLE_CREDS_JSON не найдена!")
-            return None
+        # Читаем файл credentials.json, который лежит в контейнере
+        with open('credentials.json', 'r', encoding='utf-8') as f:
+            creds_dict = json.load(f)
 
-        # Конвертируем строку в словарь (переносы \n превращаются в реальные переносы)
-        creds_dict = json.loads(creds_json_str)
+        # Страховка от того, что GitHub/Render сломали переносы строк:
+        if 'private_key' in creds_dict:
+            creds_dict['private_key'] = creds_dict['private_key'].replace('\\n', '\n')
 
         scope = [
             "https://spreadsheets.google.com/feeds",
