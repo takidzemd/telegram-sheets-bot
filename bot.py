@@ -1,9 +1,5 @@
 import os
-import base64
-import json
-import time
 import logging
-import telegram
 import gspread
 from google.oauth2.service_account import Credentials
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -25,7 +21,7 @@ SHEETS_CONFIG = {
     },
     'metrics': {
         'display': '🚚 Тачка',
-        'sheet_name': 'Разгрузка+дежурство', 
+        'sheet_name': 'Разгрузка+дежурство',
         'range': 'A1:AF11'
     },
     'birthdays': {
@@ -44,17 +40,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ============================================================
-#  ПОДКЛЮЧЕНИЕ К GOOGLE SHEETS (Через переменную окружения)
+#  ПОДКЛЮЧЕНИЕ К GOOGLE SHEETS
 # ============================================================
 def get_sheet_client():
     try:
-        # Получаем ключ из переменной окружения GOOGLE_CREDS_B64
         creds_b64 = os.environ.get('GOOGLE_CREDS_B64')
         if not creds_b64:
-            logger.error("❌ Переменная GOOGLE_CREDS_B64 не найдена! Добавь её на Render.")
+            logger.error("❌ Переменная GOOGLE_CREDS_B64 не найдена!")
             return None
 
-        # Декодируем Base64 обратно в JSON
+        import base64
+        import json
         creds_dict = json.loads(base64.b64decode(creds_b64))
 
         scope = [
@@ -63,7 +59,6 @@ def get_sheet_client():
             "https://www.googleapis.com/auth/spreadsheets"
         ]
         
-        # Используем современную библиотеку google-auth
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         return gspread.authorize(creds)
     except Exception as e:
@@ -108,7 +103,6 @@ def create_screenshot(data, sheet_name, range_cells):
     draw = ImageDraw.Draw(img)
 
     try:
-        # Используем встроенный шрифт, так как arial.ttf нет в Linux
         font = ImageFont.load_default()
         font_bold = ImageFont.load_default()
     except:
@@ -201,11 +195,11 @@ async def show_main_menu(message):
     )
 
 # ============================================================
-#  ЗАПУСК
+#  ЗАПУСК (БЕЗ ЦИКЛА!)
 # ============================================================
 def main():
     if not TELEGRAM_TOKEN:
-        logger.error("❌ Токен не найден! Добавь TELEGRAM_TOKEN в переменные окружения.")
+        logger.error("❌ Токен не найден!")
         return
     
     app = Application.builder().token(TELEGRAM_TOKEN).build()
@@ -213,17 +207,8 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     
     logger.info("🚀 Бот запущен!")
-    
-    # Обработка ошибки Conflict и перезапуск
-    while True:
-        try:
-            app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
-        except telegram.error.Conflict:
-            logger.error("⚠️ Конфликт (запущено 2 бота). Перезапуск через 10 сек...")
-            time.sleep(10)
-        except Exception as e:
-            logger.error(f"⚠️ Ошибка: {e}. Перезапуск через 5 сек...")
-            time.sleep(5)
+    # Простой запуск, без while True
+    app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
