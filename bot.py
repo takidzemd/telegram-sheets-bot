@@ -5,7 +5,7 @@ import logging
 import gspread
 from google.oauth2.service_account import Credentials
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 
@@ -143,7 +143,7 @@ async def show_main_menu(message):
     await message.reply_text("📋 **Что ещё посмотрим?**", reply_markup=reply_markup, parse_mode='Markdown')
 
 # ============================================================
-#  ЗАПУСК (WEBHOOK - работает бесплатно на Web Service)
+#  ЗАПУСК (WEBHOOK)
 # ============================================================
 def main():
     if not TELEGRAM_TOKEN:
