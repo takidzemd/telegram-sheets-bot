@@ -40,6 +40,10 @@ def get_sheet_client():
 
         creds_dict = json.loads(base64.b64decode(creds_b64))
 
+        # КРИТИЧЕСКИ ВАЖНО: Исправляем сломанные переносы строк в private_key!
+        if 'private_key' in creds_dict:
+            creds_dict['private_key'] = creds_dict['private_key'].replace('\\n', '\n')
+
         scope = [
             "https://spreadsheets.google.com/feeds",
             "https://www.googleapis.com/auth/drive",
@@ -61,7 +65,6 @@ def get_sheet_data(sheet_name, range_cells):
         data = worksheet.get(range_cells)
         return data
     except Exception as e:
-        # ВАЖНО: возвращаем ошибку, чтобы бот показал её в TG!
         logger.error(f"Ошибка чтения {sheet_name}: {e}")
         return f"ERROR: {str(e)}"
 
