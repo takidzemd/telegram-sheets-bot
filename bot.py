@@ -1,10 +1,11 @@
 import os
+import time
 import logging
+import telegram
 import gspread
-from google.oauth2.service_account import Credentials  # ИЗМЕНЕНО!
+from google.oauth2.service_account import Credentials
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-import requests
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 
@@ -22,7 +23,7 @@ SHEETS_CONFIG = {
     },
     'metrics': {
         'display': '🚚 Тачка',
-        'sheet_name': 'Разгрузка+дежурство',  # ИЗМЕНЕНО (маленькая "д")
+        'sheet_name': 'Разгрузка+дежурство', # Исправлено на маленькую "д" как в таблице!
         'range': 'A1:AF11'
     },
     'birthdays': {
@@ -41,7 +42,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ============================================================
-#  ПОДКЛЮЧЕНИЕ К GOOGLE SHEETS (ИЗМЕНЕНО!)
+#  ПОДКЛЮЧЕНИЕ К GOOGLE SHEETS (ИСПРАВЛЕНО!)
 # ============================================================
 def get_sheet_client():
     try:
@@ -50,7 +51,7 @@ def get_sheet_client():
             "https://www.googleapis.com/auth/drive",
             "https://www.googleapis.com/auth/spreadsheets"
         ]
-        # Используем современный стандарт google-auth
+        # Используем новую библиотеку google-auth вместо старой oauth2client
         creds = Credentials.from_service_account_file('credentials.json', scopes=scope)
         return gspread.authorize(creds)
     except Exception as e:
@@ -58,7 +59,6 @@ def get_sheet_client():
         return None
 
 def get_sheet_data(sheet_name, range_cells):
-    """Получает данные из указанного диапазона листа."""
     try:
         client = get_sheet_client()
         if not client:
@@ -72,10 +72,9 @@ def get_sheet_data(sheet_name, range_cells):
         return None
 
 # ============================================================
-#  СОЗДАНИЕ СКРИНШОТА ИЗ ДАННЫХ
+#  СОЗДАНИЕ СКРИНШОТА
 # ============================================================
 def create_screenshot(data, sheet_name, range_cells):
-    """Создаёт PNG-скриншот из данных таблицы."""
     if not data:
         return None
 
@@ -97,7 +96,7 @@ def create_screenshot(data, sheet_name, range_cells):
     draw = ImageDraw.Draw(img)
 
     try:
-        # ИЗМЕНЕНО! Убран arial.ttf, используем стандартный шрифт
+        # ИСПРАВЛЕНО: Используем стандартный шрифт, так как arial.ttf нет в Linux
         font = ImageFont.load_default()
         font_bold = ImageFont.load_default()
     except:
@@ -127,7 +126,7 @@ def create_screenshot(data, sheet_name, range_cells):
     return img_bytes
 
 # ============================================================
-#  ОБРАБОТЧИКИ КОМАНД БОТА
+#  ОБРАБОТЧИКИ
 # ============================================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = []
@@ -190,7 +189,7 @@ async def show_main_menu(message):
     )
 
 # ============================================================
-#  ЗАПУСК БОТА
+#  ЗАПУСК
 # ============================================================
 def main():
     if not TELEGRAM_TOKEN:
@@ -202,7 +201,17 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     
     logger.info("🚀 Бот запущен!")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    
+    # ИСПРАВЛЕНО: Добавлен цикл для обработки ошибки Conflict
+    while True:
+        try:
+            app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+        except telegram.error.Conflict:
+            logger.error("⚠️ Конфликт (запущено 2 бота). Перезапуск через 10 сек...")
+            time.sleep(10)
+        except Exception as e:
+            logger.error(f"⚠️ Ошибка: {e}. Перезапуск через 5 сек...")
+            time.sleep(5)
 
 if __name__ == "__main__":
     main()
