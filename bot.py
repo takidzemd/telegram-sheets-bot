@@ -1,7 +1,7 @@
 import os
 import logging
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials  # ИЗМЕНЕНО!
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import requests
@@ -9,21 +9,20 @@ from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 
 # ============================================================
-#  НАСТРОЙКИ (ЗАМЕНИТЬ НА СВОИ!)
+#  НАСТРОЙКИ
 # ============================================================
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 SPREADSHEET_ID = '1R1nU8B04MnX-RLtDwSMh97bM_zivjqW_zsYKEn8Pr-4'
 
-# НАСТРОЙКА ЛИСТОВ И ДИАПАЗОНОВ ДЛЯ СКРИНШОТОВ
 SHEETS_CONFIG = {
     'graphics': {
-        'display': '📊 График',           # ← display добавлен!
-        'sheet_name': 'Зоны',              # ← реальное имя листа в таблице
+        'display': '📊 График',
+        'sheet_name': 'Зоны',
         'range': 'A1:AF10'
     },
     'metrics': {
         'display': '🚚 Тачка',
-        'sheet_name': 'Разгрузка+дежурство',
+        'sheet_name': 'Разгрузка+дежурство',  # ИЗМЕНЕНО (маленькая "д")
         'range': 'A1:AF11'
     },
     'birthdays': {
@@ -42,7 +41,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ============================================================
-#  ПОДКЛЮЧЕНИЕ К GOOGLE SHEETS
+#  ПОДКЛЮЧЕНИЕ К GOOGLE SHEETS (ИЗМЕНЕНО!)
 # ============================================================
 def get_sheet_client():
     try:
@@ -51,7 +50,8 @@ def get_sheet_client():
             "https://www.googleapis.com/auth/drive",
             "https://www.googleapis.com/auth/spreadsheets"
         ]
-        creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+        # Используем современный стандарт google-auth
+        creds = Credentials.from_service_account_file('credentials.json', scopes=scope)
         return gspread.authorize(creds)
     except Exception as e:
         logger.error(f"Ошибка подключения: {e}")
@@ -97,8 +97,9 @@ def create_screenshot(data, sheet_name, range_cells):
     draw = ImageDraw.Draw(img)
 
     try:
-        font = ImageFont.truetype("arial.ttf", 12)
-        font_bold = ImageFont.truetype("arialbd.ttf", 14)
+        # ИЗМЕНЕНО! Убран arial.ttf, используем стандартный шрифт
+        font = ImageFont.load_default()
+        font_bold = ImageFont.load_default()
     except:
         font = ImageFont.load_default()
         font_bold = font
@@ -129,7 +130,6 @@ def create_screenshot(data, sheet_name, range_cells):
 #  ОБРАБОТЧИКИ КОМАНД БОТА
 # ============================================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показывает главное меню с кнопками."""
     keyboard = []
     for key, config in SHEETS_CONFIG.items():
         keyboard.append([InlineKeyboardButton(config['display'], callback_data=key)])
@@ -142,7 +142,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обрабатывает нажатие кнопки, делает скриншот и отправляет."""
     query = update.callback_query
     await query.answer()
     
@@ -153,7 +152,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("❌ Лист не найден")
         return
     
-    sheet_name = config['sheet_name']  # ← реальное имя листа в таблице
+    sheet_name = config['sheet_name']
     range_cells = config['range']
     display_name = config['display']
     
@@ -179,7 +178,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await show_main_menu(query.message)
 
 async def show_main_menu(message):
-    """Показывает главное меню с кнопками."""
     keyboard = []
     for key, config in SHEETS_CONFIG.items():
         keyboard.append([InlineKeyboardButton(config['display'], callback_data=key)])
