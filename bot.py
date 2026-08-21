@@ -1,5 +1,9 @@
 import os
+import time
+import base64
+import json
 import logging
+import telegram
 import gspread
 from google.oauth2.service_account import Credentials
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -21,7 +25,7 @@ SHEETS_CONFIG = {
     },
     'metrics': {
         'display': '🚚 Тачка',
-        'sheet_name': 'Разгрузка+дежурство',
+        'sheet_name': 'Разгрузка+дежурство', 
         'range': 'A1:AF11'
     },
     'birthdays': {
@@ -49,8 +53,6 @@ def get_sheet_client():
             logger.error("❌ Переменная GOOGLE_CREDS_B64 не найдена!")
             return None
 
-        import base64
-        import json
         creds_dict = json.loads(base64.b64decode(creds_b64))
 
         scope = [
@@ -58,7 +60,6 @@ def get_sheet_client():
             "https://www.googleapis.com/auth/drive",
             "https://www.googleapis.com/auth/spreadsheets"
         ]
-        
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         return gspread.authorize(creds)
     except Exception as e:
@@ -103,6 +104,7 @@ def create_screenshot(data, sheet_name, range_cells):
     draw = ImageDraw.Draw(img)
 
     try:
+        # Встроенный шрифт, который точно есть в Linux
         font = ImageFont.load_default()
         font_bold = ImageFont.load_default()
     except:
@@ -195,7 +197,7 @@ async def show_main_menu(message):
     )
 
 # ============================================================
-#  ЗАПУСК (БЕЗ ЦИКЛА!)
+#  ЗАПУСК (БЕЗ Webhook, БЕЗ Flask, работает только на Background Worker!)
 # ============================================================
 def main():
     if not TELEGRAM_TOKEN:
@@ -207,8 +209,17 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     
     logger.info("🚀 Бот запущен!")
-    # Простой запуск, без while True
-    app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+    
+    # Побеждаем ошибку Conflict: бот ждет, пока старый процесс умрет, и только потом запускается
+    while True:
+        try:
+            app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+        except telegram.error.Conflict:
+            logger.error("⚠️ Конфликт: старый процесс еще жив. Ждем 15 секунд...")
+            time.sleep(15)
+        except Exception as e:
+            logger.error(f"⚠️ Ошибка: {e}. Перезапуск через 5 секунд...")
+            time.sleep(5)
 
 if __name__ == "__main__":
     main()
