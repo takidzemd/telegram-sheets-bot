@@ -61,8 +61,9 @@ def get_sheet_data(sheet_name, range_cells):
         data = worksheet.get(range_cells)
         return data
     except Exception as e:
+        # ВАЖНО: возвращаем ошибку, чтобы бот показал её в TG!
         logger.error(f"Ошибка чтения {sheet_name}: {e}")
-        return None
+        return f"ERROR: {str(e)}"
 
 # ============================================================
 #  СОЗДАНИЕ СКРИНШОТА
@@ -140,9 +141,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     display_name = config['display']
     await query.edit_message_text(f"📸 Делаю скриншот {display_name}...")
     data = get_sheet_data(sheet_name, range_cells)
+    
+    # Если data - это строка, значит это была ошибка (например, нет прав или не найдена вкладка)
+    if isinstance(data, str):
+        await query.message.reply_text(f"❌ Ошибка: {data}")
+        return
+    
     if not data:
         await query.message.reply_text(f"❌ Не удалось получить данные из {display_name}")
         return
+    
     screenshot = create_screenshot(data, sheet_name, range_cells)
     if screenshot:
         await query.message.reply_photo(screenshot, caption=f"✅ **{display_name}**\nДиапазон: `{range_cells}`", parse_mode='Markdown')
@@ -158,25 +166,22 @@ async def show_main_menu(message):
     await message.reply_text("📋 **Что ещё посмотрим?**", reply_markup=reply_markup, parse_mode='Markdown')
 
 # ============================================================
-#  ЗАПУСК ЧЕРЕЗ WEBHOOK (ПОЛНОСТЬЮ БЕЗ КОНФЛИКТОВ)
+#  ЗАПУСК ЧЕРЕЗ WEBHOOK
 # ============================================================
 def main():
     if not TELEGRAM_TOKEN:
         logger.error("❌ Токен не найден!")
         return
-
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
-
+    
     logger.info("🚀 Бот запущен!")
-
+    
     if not RENDER_URL:
         logger.error("❌ Переменная RENDER_EXTERNAL_URL не найдена!")
         return
-
-    # Устанавливаем вебхук. Telegram сам будет отправлять обновления на этот URL.
-    # Это полностью исключает конфликт (Conflict).
+    
     app.run_webhook(
         listen="0.0.0.0",
         port=PORT,
