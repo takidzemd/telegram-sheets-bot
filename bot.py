@@ -1,7 +1,6 @@
 import os
 import base64
 import json
-import time
 import logging
 import gspread
 from google.oauth2.service_account import Credentials
@@ -14,6 +13,9 @@ from PIL import Image, ImageDraw, ImageFont
 #  НАСТРОЙКИ
 # ============================================================
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
+PORT = int(os.environ.get('PORT', 10000))
+RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL')
+
 SPREADSHEET_ID = '1R1nU8B04MnX-RLtDwSMh97bM_zivjqW_zsYKEn8Pr-4'
 
 SHEETS_CONFIG = {
@@ -156,7 +158,7 @@ async def show_main_menu(message):
     await message.reply_text("📋 **Что ещё посмотрим?**", reply_markup=reply_markup, parse_mode='Markdown')
 
 # ============================================================
-#  ЗАПУСК ЧЕРЕЗ CRON JOB (без порта, без вебхуков)
+#  ЗАПУСК ЧЕРЕЗ WEBHOOK (ПОЛНОСТЬЮ БЕЗ КОНФЛИКТОВ)
 # ============================================================
 def main():
     if not TELEGRAM_TOKEN:
@@ -168,9 +170,19 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
 
     logger.info("🚀 Бот запущен!")
-    # Этот метод запускает бота, но не требует веб-сервера.
-    # Он будет работать до тех пор, пока процесс жив (без конфликтов)
-    app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
+
+    if not RENDER_URL:
+        logger.error("❌ Переменная RENDER_EXTERNAL_URL не найдена!")
+        return
+
+    # Устанавливаем вебхук. Telegram сам будет отправлять обновления на этот URL.
+    # Это полностью исключает конфликт (Conflict).
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        url_path=TELEGRAM_TOKEN,
+        webhook_url=f"{RENDER_URL}/{TELEGRAM_TOKEN}"
+    )
 
 if __name__ == "__main__":
     main()
